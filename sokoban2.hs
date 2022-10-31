@@ -10,6 +10,9 @@ main = walk1
 walk1 :: IO()
 walk1 = activityOf initial_state handle_event draw_state
 
+walk2 :: IO()
+walk2 = activityOf initial_state handle_event2 draw_state2
+
 initial_state :: State
 initial_state = S (C 0 1) 10 maze L
 
@@ -21,6 +24,14 @@ handle_event (KeyPress key) state
     | key == "Down"  = move_player D state
 handle_event _ c      = c
 
+handle_event2 :: Event -> State -> State
+handle_event2 (KeyPress key) state
+    | key == "Right" = move_player2 R state
+    | key == "Up"    = move_player2 U state
+    | key == "Left"  = move_player2 L state
+    | key == "Down"  = move_player2 D state
+handle_event2 _ c      = c
+
 move_player :: Direction -> State -> State
 move_player dir state = do {
     if (check_coord state (moveCoord dir (stPlayer state)))
@@ -28,6 +39,21 @@ move_player dir state = do {
         state {
             stPlayer = 
             (moveCoord dir (stPlayer state))
+        }
+    else 
+        state
+    }
+    
+    
+
+move_player2 :: Direction -> State -> State
+move_player2 dir state = do {
+    if (check_coord state (moveCoord dir (stPlayer state)))
+    then 
+        state {
+            stPlayer = 
+            (moveCoord dir (stPlayer state)),
+            stDir = dir
         }
     else 
         state
@@ -46,6 +72,13 @@ draw_state :: State -> Picture
 draw_state state = 
     (translated (fromIntegral (x (stPlayer state))) (fromIntegral (y (stPlayer state))) player1) &
     (pictures[ 
+    draw_square state (C x y) | 
+    x <- range_n (stRange state), y <- range_n (stRange state) ])
+    
+draw_state2 :: State -> Picture
+draw_state2 state = 
+    (translated (fromIntegral (x (stPlayer state))) (fromIntegral (y (stPlayer state))) (player2 (stDir state))) &
+    (pictures[
     draw_square state (C x y) | 
     x <- range_n (stRange state), y <- range_n (stRange state) ])
     
@@ -136,7 +169,7 @@ player1 = colored yellow (
     
     
 player2 :: Direction -> Picture 
-player2 R = rotated 180 player1
-player2 U = rotated 90 player1
+player2 R = rotated 3.14 player1
+player2 U = rotated 4.71 player1
 player2 L = player1 
-player2 D = rotated 270 player1
+player2 D = rotated 1.57 player1
