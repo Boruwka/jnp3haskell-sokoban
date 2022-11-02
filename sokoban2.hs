@@ -1,17 +1,80 @@
 {-# LANGUAGE OverloadedStrings #-}
 import CodeWorld
-type Program = IO () -- program wykonuje IO i nie daje wartości 
+type Program = IO ()
 
 main :: Program
-main = walk1
-
---program = drawingOf (player1)
+main = walk3
 
 walk1 :: IO()
 walk1 = activityOf initial_state handle_event draw_state
 
 walk2 :: IO()
 walk2 = activityOf initial_state handle_event2 draw_state2
+
+walk3 :: IO()
+walk3 = resettableActivityOf initial_state handle_event2 draw_state2
+
+resettableActivityOf :: State -> (Event -> State -> State) -> (State -> Picture) -> IO()
+resettableActivityOf initial handler drawer = 
+    activityOf initial (handleWithEsc handler initial) drawer
+    
+handleWithEsc :: (Event -> State -> State) -> State -> Event -> State -> State
+handleWithEsc handler initial (KeyPress key) prev_state
+    | key == "Esc" = initial
+    | otherwise = handler (KeyPress key) prev_state
+    
+-- nic się nie zmienia po puszczeniu esc, to znaczy, że moment jego puszczenia nie ma znaczenia, tylko moment wciśnięcia
+    
+handleWithEsc handler _ event prev_state = handler event prev_state
+
+data Direction = R | U | L | D
+data Coord = C {x :: Int, y :: Int}
+
+moveCoord :: Direction -> Coord -> Coord
+moveCoord R (C x y) = C (x+1) y
+moveCoord U (C x y) = C x (y+1)
+moveCoord L (C x y) = C (x-1) y
+moveCoord D (C x y) = C x (y-1)
+
+moveCoords :: [Direction] -> Coord -> Coord
+moveCoords [] initial_coord = initial_coord
+moveCoords (h:tab) initial_coord = 
+    moveCoords tab (moveCoord h initial_coord)
+
+
+wall :: Picture
+wall = colored black (solidRectangle 1 1)
+
+ground :: Picture
+ground = colored (light blue) (solidRectangle 1 1)
+
+storage :: Picture
+storage = 
+    colored (red) (solidCircle 0.5) & 
+    colored (light blue) (solidRectangle 1 1) 
+    
+box :: Picture
+box = 
+    (colored black (polyline [(0.5, 0.5), (-0.5, -0.5)])) & 
+    (colored black (polyline [(-0.5, 0.5), (0.5, -0.5)])) & 
+    (colored black (rectangle 1 1)) & 
+    (colored brown (solidRectangle 1 1))
+    
+data Tile = Wall | Ground | Storage | Box | Blank deriving (Eq)
+
+drawTile :: Tile -> Picture 
+drawTile Wall = wall 
+drawTile Ground = ground
+drawTile Storage = storage
+drawTile Box = box
+drawTile Blank = blank
+
+data State = S {
+    stPlayer :: Coord,
+    stRange  :: Int,
+    stMaze   :: Coord -> Tile,
+    stDir    :: Direction -- kierunek w którym patrzył gracz podczas ostatniego ruchu
+}
 
 initial_state :: State
 initial_state = S (C 0 1) 10 maze L
@@ -60,7 +123,7 @@ move_player2 dir state = do {
     }
     
     
-check_coord :: State -> Coord -> Bool
+check_coord :: State -> Coord -> Bool -- sprawdza czy można się przemieścić na to pole
 check_coord state c = do {
     if (((stMaze state c) == Ground) ||
         ((stMaze state c) == Storage))
@@ -82,59 +145,8 @@ draw_state2 state =
     draw_square state (C x y) | 
     x <- range_n (stRange state), y <- range_n (stRange state) ])
     
-    
-
-data State = S {
-    stPlayer :: Coord,
-    stRange  :: Int,
-    stMaze   :: Coord -> Tile,
-    stDir    :: Direction -- kierunek w którym patrzył gracz podczas ostatniego ruchu
-}
-
-data Direction = R | U | L | D
-data Coord = C {x :: Int, y :: Int}
-
-moveCoord :: Direction -> Coord -> Coord
-moveCoord R (C x y) = C (x+1) y
-moveCoord U (C x y) = C x (y+1)
-moveCoord L (C x y) = C (x-1) y
-moveCoord D (C x y) = C x (y-1)
-
-moveCoords :: [Direction] -> Coord -> Coord
-moveCoords [] initial_coord = initial_coord
-moveCoords (h:tab) initial_coord = 
-    moveCoords tab (moveCoord h initial_coord)
-
-
-wall :: Picture
-wall = colored black (solidRectangle 1 1)
-
-ground :: Picture
-ground = colored (light blue) (solidRectangle 1 1)
-
-storage :: Picture
-storage = 
-    colored (red) (solidCircle 0.5) & 
-    colored (light blue) (solidRectangle 1 1) 
-    
-box :: Picture
-box = 
-    (colored black (polyline [(0.5, 0.5), (-0.5, -0.5)])) & 
-    (colored black (polyline [(-0.5, 0.5), (0.5, -0.5)])) & 
-    (colored black (rectangle 1 1)) & 
-    (colored brown (solidRectangle 1 1))
-    
-data Tile = Wall | Ground | Storage | Box | Blank deriving (Eq)
- 
---is_tile_equal :: Eq Tile => Tile -> Tile -> Bool
---is_tile_equal b c = (b == c)
    
-drawTile :: Tile -> Picture 
-drawTile Wall = wall 
-drawTile Ground = ground
-drawTile Storage = storage
-drawTile Box = box
-drawTile Blank = blank
+ 
 
 maze :: Coord -> Tile
 maze (C x y)
@@ -149,17 +161,12 @@ maze (C x y)
 range_n :: Int -> [Int]
 range_n n = [-n..n] 
 
---picture_of_square :: Int -> Int -> Picture 
---picture_of_square x y = translated (fromIntegral x) (fromIntegral y) (drawTile (maze x y))
 
 draw_square :: State -> Coord -> Picture 
 draw_square state c = translated (fromIntegral (x c)) (fromIntegral (y c)) (drawTile ((stMaze state) c))
 
 n :: Int 
 n = 10
-
---pictureOfMaze :: Picture
---pictureOfMaze = pictures[ picture_of_square x y | x <- range_n n, y <- range_n n ]
 
 player1 :: Picture
 player1 = colored yellow (
