@@ -8,7 +8,7 @@ main = walk
 --main = drawingOf (pictureOfBoxes initialBoxes)
 
 walk :: IO()
-walk = resettableActivityOf initial_state handle_event draw_state
+walk = resettableActivityOf initial_state handleEvent draw
 
 -- resetowanie gry
 
@@ -47,13 +47,13 @@ initialBoxes = getBoxes initial_maze
 
 -- funkcje obsługujące zdarzenia
 
-handle_event :: Event -> State -> State
-handle_event (KeyPress key) state
+handleEvent :: Event -> State -> State
+handleEvent (KeyPress key) state
     | key == "Right" = move_player R state
     | key == "Up"    = move_player U state
     | key == "Left"  = move_player L state
     | key == "Down"  = move_player D state
-handle_event _ c      = c
+handleEvent _ c      = c
   
 
 move_player :: Direction -> State -> State
@@ -66,13 +66,31 @@ move_player dir state =
             stDir = dir
         }
     else 
-        state
+        if (check_if_box_is_moved state dir (moveCoord dir (stPlayer state))) -- to pudło i za nim jest miejsce
+        then 
+            state { 
+                stPlayer = (moveCoord dir (stPlayer state)),
+                stBoxes = new_boxes,                    
+                stMaze = addBoxes new_boxes (removeBoxes (stMaze state)),
+                stDir = dir
+            }
+        else 
+            state
+    where new_boxes = map (change_one_element (moveCoord dir (stPlayer state)) (moveCoord dir (moveCoord dir (stPlayer state)))) (stBoxes state)
+        
+         
+        
+change_one_element :: Coord -> Coord -> Coord -> Coord 
+change_one_element a b c = 
+    if a == c 
+    then b
+    else a
     
 
 -- funkcja rysująca
     
-draw_state :: State -> Picture
-draw_state state = 
+draw :: State -> Picture
+draw state = 
     (translated (fromIntegral (x (stPlayer state))) (fromIntegral (y (stPlayer state))) (player (stDir state))) &
     (pictures[
     draw_square state (C x y) | 
@@ -99,6 +117,10 @@ box =
     (colored brown (solidRectangle 1 1))
     
 -- manipulowanie skrzyniami
+
+check_if_box_is_moved :: State -> Direction -> Coord -> Bool
+check_if_box_is_moved state dir c = 
+    (stMaze state c) == Box && ((stMaze state (moveCoord dir c)) == Ground || (stMaze state (moveCoord dir c)) == Storage)
 
 getBoxes :: (Coord -> Tile) -> [Coord]
 getBoxes maze = [(C x y) | x <- range_n n, y <- range_n n, maze (C x y) == Box]
