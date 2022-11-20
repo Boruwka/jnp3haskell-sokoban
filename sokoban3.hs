@@ -84,7 +84,8 @@ change_one_element :: Coord -> Coord -> Coord -> Coord
 change_one_element a b c = 
     if a == c 
     then b
-    else a
+    else c
+
     
 
 -- funkcja rysująca
