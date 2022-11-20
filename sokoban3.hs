@@ -57,7 +57,7 @@ handle_event _ c      = c
   
 
 move_player :: Direction -> State -> State
-move_player dir state = do {
+move_player dir state =
     if (check_coord state (moveCoord dir (stPlayer state)))
     then 
         state {
@@ -67,7 +67,6 @@ move_player dir state = do {
         }
     else 
         state
-    }
     
 
 -- funkcja rysująca
@@ -99,21 +98,37 @@ box =
     (colored black (rectangle 1 1)) & 
     (colored brown (solidRectangle 1 1))
     
--- podstawowe definicje
-
-type Maze = Coord -> Tile
+-- manipulowanie skrzyniami
 
 getBoxes :: (Coord -> Tile) -> [Coord]
 getBoxes maze = [(C x y) | x <- range_n n, y <- range_n n, maze (C x y) == Box]
 
+addBoxes :: [Coord] -> Maze -> Maze
+addBoxes boxes maze = maze_with_boxes
+    where 
+        maze_with_boxes c = if (elem c boxes)
+        then 
+            Box
+        else 
+            maze c
+
 removeBoxes :: (Coord -> Tile) -> Coord -> Tile
 removeBoxes maze =  fun . maze
-  where
-         fun Box = Ground
-         fun tile = tile
+    where
+        fun Box = Ground
+        fun tile = tile
+         
+pictureOfBoxes :: [Coord] -> Picture
+pictureOfBoxes boxes = 
+    (pictures[
+    draw_box c | c <- boxes])
+    
+-- podstawowe definicje
+
+type Maze = Coord -> Tile
 
 data Direction = R | U | L | D
-data Coord = C {x :: Int, y :: Int}
+data Coord = C {x :: Int, y :: Int} deriving (Eq)
 
 moveCoord :: Direction -> Coord -> Coord
 moveCoord R (C x y) = C (x+1) y
@@ -127,12 +142,7 @@ moveCoords (h:tab) initial_coord =
     moveCoords tab (moveCoord h initial_coord)
 
 check_coord :: State -> Coord -> Bool -- sprawdza czy można się przemieścić na to pole
-check_coord state c = do {
-    if (((stMaze state c) == Ground) ||
-        ((stMaze state c) == Storage))
-    then True
-    else False
-} 
+check_coord state c = (stMaze state c) == Ground || (stMaze state c) == Storage
 
 draw_square :: State -> Coord -> Picture 
 draw_square state c = translated (fromIntegral (x c)) (fromIntegral (y c)) (drawTile ((stMaze state) c))
@@ -171,11 +181,6 @@ data State = S {
 
 range_n :: Int -> [Int]
 range_n n = [-n..n] 
-
-pictureOfBoxes :: [Coord] -> Picture
-pictureOfBoxes boxes = 
-    (pictures[
-    draw_box c | c <- boxes])
     
 draw_box :: Coord -> Picture
 draw_box c = translated (fromIntegral (x c)) (fromIntegral (y c)) (drawTile Box)
