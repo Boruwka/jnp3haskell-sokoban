@@ -183,6 +183,16 @@ pictureOfBoxes boxes =
     
 -- podstawowe definicje
 
+allList :: [Bool] -> Bool 
+allList list = foldl (&&) True list
+
+isWinning :: State -> Bool 
+isWinning state = allList (map (is_on_storage state) (stBoxes state))
+        
+is_on_storage :: State -> Coord -> Bool
+is_on_storage state c = ((stInitialMaze state) c == Storage)
+    
+
 type Maze = Coord -> Tile
 
 data Direction = R | U | L | D
