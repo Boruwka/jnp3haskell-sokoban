@@ -8,26 +8,59 @@ main = walk
 --main = drawingOf (pictureOfBoxes initialBoxes)
 
 walk :: IO()
-walk = resettableActivityOf initial_state handleEvent draw
+--walk = resettableActivityOf initial_state handleEvent draw
+walk = runActivity main_activity
 
--- resetowanie gry
+-- resetowanie gry i start screen
 
-resettableActivityOf :: State -> (Event -> State -> State) -> (State -> Picture) -> IO()
-resettableActivityOf initial handler drawer = 
-    activityOf initial (handleWithEsc handler initial) drawer
+runActivity :: Activity s -> IO ()
+runActivity a = activityOf (actState a) (actHandle a) (actDraw a)
+
+main_activity :: Activity (SSState State) 
+main_activity = withStartScreen (resettable (
+    Activity {
+        actState = initial_state,
+        actHandle = handleEvent,
+        actDraw = draw }
+    ))
+
+data Activity world = Activity {
+    actState  :: world,
+    actHandle :: (Event -> world -> world),
+    actDraw   ::(world -> Picture)
+    }
+
+resettable :: Activity s -> Activity s
+resettable (Activity state0 handle draw)
+  = Activity state0 handle' draw
+  where handle' (KeyPress key) _ | key == "Esc" = state0
+        handle' e s = handle e s
+        
+data SSState world = StartScreen | Running world
+
+withStartScreen :: Activity s -> Activity (SSState s)
+
+withStartScreen (Activity state0 handle draw)
+  = Activity state0' handle' draw'
+  where
+    state0' = StartScreen
+
+    handle' (KeyPress key) StartScreen
+         | key == " "                  = Running state0
+    handle' _              StartScreen = StartScreen
+    handle' e              (Running s) = Running (handle e s)
+
+    draw' StartScreen = startScreen
+    draw' (Running s) = draw s
     
-handleWithEsc :: (Event -> State -> State) -> State -> Event -> State -> State
-handleWithEsc handler initial (KeyPress key) prev_state
-    | key == "Esc" = initial
-    | otherwise = handler (KeyPress key) prev_state
-       
-handleWithEsc handler _ event prev_state = handler event prev_state
+startScreen :: Picture
+startScreen = lettering("Witamy w Sokobanie!")
 
 
 -- pierwotny stan 
 
 initial_state :: State
-initial_state = S (C 0 1) 10 initial_maze L initialBoxes
+initial_state = S (C 0 1) 10 initial_maze initial_maze L initialBoxes
 
 initial_maze :: Maze
 initial_maze (C x y)
@@ -140,6 +173,8 @@ removeBoxes maze =  fun . maze
     where
         fun Box = Ground
         fun tile = tile
+        
+        
          
 pictureOfBoxes :: [Coord] -> Picture
 pictureOfBoxes boxes = 
@@ -197,6 +232,7 @@ data State = S {
     stPlayer :: Coord,
     stRange  :: Int,
     stMaze   :: Maze,
+    stInitialMaze :: Maze,
     stDir    :: Direction, -- kierunek w którym patrzył gracz podczas ostatniego ruchu
     stBoxes  :: [Coord]
 }
