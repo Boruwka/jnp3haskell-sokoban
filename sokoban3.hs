@@ -104,7 +104,7 @@ move_player dir state =
             state { 
                 stPlayer = (moveCoord dir (stPlayer state)),
                 stBoxes = new_boxes,                    
-                stMaze = addBoxes new_boxes (removeBoxes (stMaze state)),
+                stMaze = addBoxes new_boxes (removeBoxes initial_maze),
                 stDir = dir
             }
         else 
