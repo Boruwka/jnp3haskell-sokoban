@@ -82,6 +82,7 @@ initialBoxes = getBoxes initial_maze
 
 handleEvent :: Event -> State -> State
 handleEvent (KeyPress key) state
+    | (isWinning state) = state
     | key == "Right" = move_player R state
     | key == "Up"    = move_player U state
     | key == "Left"  = move_player L state
@@ -125,10 +126,13 @@ change_one_element a b c =
     
 draw :: State -> Picture
 draw state = 
-    (translated (fromIntegral (x (stPlayer state))) (fromIntegral (y (stPlayer state))) (player (stDir state))) &
-    (pictures[
-    draw_square state (C x y) | 
-    x <- range_n (stRange state), y <- range_n (stRange state) ])
+    if (isWinning state) 
+    then lettering("Wygrana!")
+    else 
+        (translated (fromIntegral (x (stPlayer state))) (fromIntegral (y (stPlayer state))) (player (stDir state))) &
+        (pictures[
+        draw_square state (C x y) | 
+        x <- range_n (stRange state), y <- range_n (stRange state) ])
     
 -- rysunki elementów planszy 
 
