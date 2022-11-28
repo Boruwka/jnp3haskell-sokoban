@@ -60,7 +60,7 @@ startScreen = lettering("Witamy w Sokobanie!")
 -- pierwotny stan 
 
 initial_state :: State
-initial_state = S (C 0 1) 10 (initial_maze (C 0 1)) (initial_maze (C 0 1)) L initialBoxes
+initial_state = S (C 0 1) 10 (initial_maze) (initial_maze) L initialBoxes
 
 initial_maze :: Coord -> Tile
 initial_maze (C x y)
@@ -305,8 +305,8 @@ drawTile Blank = blank
 data State = S {
     stPlayer :: Coord,
     stRange  :: Int,
-    stMaze   :: Maze,
-    stInitialMaze :: Maze,
+    stMaze   :: (Coord -> Tile),
+    stInitialMaze :: (Coord -> Tile),
     stDir    :: Direction, -- kierunek w którym patrzył gracz podczas ostatniego ruchu
     stBoxes  :: [Coord]
 }
