@@ -5,12 +5,13 @@ type Program = IO ()
 main :: Program
 main = walk
 
--- Jagoda Bracha jb429153, nie zdążę całości na pewno, być może do jutra do 18:00 wyślę nową wersję, jeśli uda mi się coś dorobić
+-- Jagoda Bracha jb429153
+-- nie zdążę całości na pewno, do jutra do 18:00 wyślę nową wersję, jeśli uda mi się coś dorobić
+-- na razie brakuje całego etapu 5, funkcji isSane i zrobienia przeszukiwania grafu tak, by się liczyło w sensownym czasie 
+-- (i to też jest konieczne i wystarczające do zrobienia funkcji isSane) 
 
---main = drawingOf (pictureOfBoxes initialBoxes)
 
 walk :: IO()
---walk = resettableActivityOf initial_state handleEvent draw
 walk = runActivity main_activity
 
 -- resetowanie gry i start screen
@@ -56,7 +57,26 @@ withStartScreen (Activity state0 handle draw)
     draw' (Running s) = draw s
     
 startScreen :: Picture
-startScreen = lettering("Witamy w Sokobanie!")
+startScreen = etap4 
+
+etap4 :: Picture
+etap4 = pictureOfBools (mapList (\x -> isClosed x) (mazes ++ badMazes))
+
+pictureOfBools :: [Bool] -> Picture
+pictureOfBools xs = translated (-fromIntegral k / 2) (fromIntegral k) (go 0 xs)
+  where n = length xs
+        k = findK 0 -- k is the integer square of n
+        findK i | i * i >= n = i
+                | otherwise  = findK (i+1)
+        go _ [] = blank
+        go i (b:bs) =
+          translated (fromIntegral (i `mod` k))
+                     (-fromIntegral (i `div` k))
+                     (pictureOfBool b)
+          & go (i+1) bs
+
+        pictureOfBool True =  colored green (solidCircle 0.4)
+        pictureOfBool False = colored red   (solidCircle 0.4)
 
 
 -- pierwotny stan 
@@ -426,10 +446,12 @@ isClosed :: Maze -> Bool
 isClosed m = 
     if ((((mazeMap m) (mazeStart m)) /= Ground) && (((mazeMap m) (mazeStart m)) /= Storage)) 
     then False
-    else isGraphClosed (mazeStart m) maze_neighbours (\x -> not(((mazeMap m) x) == Blank))
+    else isGraphClosed (mazeStart m) (maze_neighbours (mazeMap m)) (\x -> not(((mazeMap m) x) == Blank))
     
-maze_neighbours :: Coord -> [Coord]
-maze_neighbours c = [
+maze_neighbours :: (Coord -> Tile) -> Coord -> [Coord]
+maze_neighbours map c =
+    filterList (\x -> ((map x) /= Wall))
+    [
     (C ((x c) + 1) ((y c) + 1)),
     (C ((x c) - 1) ((y c) + 1)),
     (C ((x c) + 1) ((y c) - 1)),
