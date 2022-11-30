@@ -1,4 +1,4 @@
-main = print 42
+main = print res
 
 isGraphClosed :: Eq a => a -> (a -> [a]) -> (a -> Bool) -> Bool
 isGraphClosed initial neighbours isOk = dfs initial [] neighbours isOk
@@ -9,8 +9,26 @@ dfs initial visited neighbours isOk =
     if (isOk initial) 
     then 
         andList 
-            (mapList (\x -> dfs x (initial:visited) neighbours isOk) (neighbours initial)) 
+            (mapList (\x -> dfs x (initial:visited) neighbours isOk) (filter_not_visited visited (neighbours initial))) 
     else False
+    
+filter_not_visited :: Eq a => [a] -> [a] -> [a]
+filter_not_visited visited neighbour_list = filterList (\x -> not(elemList x visited)) neighbour_list
+    
+-- sprawdzenie grafu
+check_vertex1 :: Integer -> Bool
+check_vertex1 x = (mod x 3 == 0)
+check_vertex2 :: Integer -> Bool
+check_vertex2 x = True
+
+neighbours :: Integer -> [Integer]
+neighbours 1 = [2, 3]
+neighbours 2 = [3, 1]
+neighbours 3 = [1, 2]
+neighbours x = []
+
+res :: Bool
+res = isGraphClosed 1 neighbours check_vertex2
 
 -- funkcje pomocnicze z listami 
 
