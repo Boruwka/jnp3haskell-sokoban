@@ -16,6 +16,7 @@ dfs initial visited neighbours isOk =
     
     
 -- ta funkcja może sprawdzić dany wierzchołek więcej niż raz, ale nigdy się nie zapętli 
+-- aczkolwiek jej złożoność dla kliki rozmiaru n to n!, więc nie jest zbyt dobrze 
     
 filter_not_visited :: Eq a => [a] -> [a] -> [a]
 filter_not_visited visited neighbour_list = filterList (\x -> not(elemList x visited)) neighbour_list
@@ -34,6 +35,11 @@ reachable_with_visited v initial visited neighbours =
     else 
         orList 
         (mapList (\x -> reachable_with_visited v x (initial:visited) neighbours) (filter_not_visited visited (neighbours initial))) 
+        
+-- all reachable
+
+allReachable :: Eq a => [a] -> a -> (a -> [a]) -> Bool
+allReachable vs initial neighbours = allList (\x -> reachable x initial neighbours) vs
     
     
 -- sprawdzenie grafu
@@ -42,14 +48,20 @@ check_vertex1 x = (mod x 3 == 0)
 check_vertex2 :: Integer -> Bool
 check_vertex2 x = True
 
-neighbours :: Integer -> [Integer]
-neighbours 1 = [2]
-neighbours 2 = [1, 3]
-neighbours 3 = [2]
-neighbours x = []
+neighbours1 :: Integer -> [Integer]
+neighbours1 1 = [2]
+neighbours1 2 = [1, 3]
+neighbours1 3 = [2]
+neighbours1 x = []
+
+neighbours2 :: Integer -> [Integer]
+neighbours2 1 = [2, 3]
+neighbours2 2 = [1, 3]
+neighbours2 3 = [1, 2]
+neighbours2 x = []
 
 res :: Bool
-res = reachable 1 3 neighbours
+res = allReachable [1, 2, 5] 1 neighbours2 
     
 
 -- funkcje pomocnicze z listami 
