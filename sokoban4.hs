@@ -5,6 +5,8 @@ type Program = IO ()
 main :: Program
 main = walk
 
+-- Jagoda Bracha jb429153, nie zdążę całości na pewno, być może do jutra do 18:00 wyślę nową wersję, jeśli uda mi się coś dorobić
+
 --main = drawingOf (pictureOfBoxes initialBoxes)
 
 walk :: IO()
@@ -187,7 +189,11 @@ pictureOfBoxes boxes =
     
 -- poziomy
 
-data Maze = Maze Coord (Coord -> Tile)
+
+data Maze = Maze {
+    mazeStart  :: Coord,
+    mazeMap :: Coord -> Tile
+    }
 
 mazes :: [Maze]
 mazes = [
@@ -249,11 +255,8 @@ cutOffStorageMaze_DM (C x y)
     
 -- podstawowe definicje
 
-allList :: [Bool] -> Bool 
-allList list = foldl (&&) True list
-
 isWinning :: State -> Bool 
-isWinning state = allList (map (is_on_storage state) (stBoxes state))
+isWinning state = andList (map (is_on_storage state) (stBoxes state))
         
 is_on_storage :: State -> Coord -> Bool
 is_on_storage state c = ((stInitialMaze state) c == Storage)
@@ -360,28 +363,6 @@ reachable_with_visited v initial visited neighbours =
 allReachable :: Eq a => [a] -> a -> (a -> [a]) -> Bool
 allReachable vs initial neighbours = allList (\x -> reachable x initial neighbours) vs
     
-    
--- sprawdzenie grafu
-check_vertex1 :: Integer -> Bool
-check_vertex1 x = (mod x 3 == 0)
-check_vertex2 :: Integer -> Bool
-check_vertex2 x = True
-
-neighbours1 :: Integer -> [Integer]
-neighbours1 1 = [2]
-neighbours1 2 = [1, 3]
-neighbours1 3 = [2]
-neighbours1 x = []
-
-neighbours2 :: Integer -> [Integer]
-neighbours2 1 = [2, 3]
-neighbours2 2 = [1, 3]
-neighbours2 3 = [1, 2]
-neighbours2 x = []
-
-res :: Bool
-res = allReachable [1, 2, 5] 1 neighbours2 
-    
 
 -- funkcje pomocnicze z listami 
 
@@ -438,6 +419,22 @@ elemList x lista = foldList (true_if_equal x) False lista
 
 true_if_equal :: Eq a => a -> a -> Bool -> Bool 
 true_if_equal x y acc = (acc || (x == y))
+
+-- sprawdzanie poziomów
+
+isClosed :: Maze -> Bool 
+isClosed m = 
+    if ((((mazeMap m) (mazeStart m)) /= Ground) && (((mazeMap m) (mazeStart m)) /= Storage)) 
+    then False
+    else isGraphClosed (mazeStart m) maze_neighbours (\x -> not(((mazeMap m) x) == Blank))
+    
+maze_neighbours :: Coord -> [Coord]
+maze_neighbours c = [
+    (C ((x c) + 1) ((y c) + 1)),
+    (C ((x c) - 1) ((y c) + 1)),
+    (C ((x c) + 1) ((y c) - 1)),
+    (C ((x c) - 1) ((y c) - 1))
+    ]
 
 
 
