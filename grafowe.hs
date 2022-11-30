@@ -1,5 +1,7 @@
 main = print res
 
+-- isGraphClosed
+
 isGraphClosed :: Eq a => a -> (a -> [a]) -> (a -> Bool) -> Bool
 isGraphClosed initial neighbours isOk = dfs initial [] neighbours isOk
 
@@ -12,8 +14,27 @@ dfs initial visited neighbours isOk =
             (mapList (\x -> dfs x (initial:visited) neighbours isOk) (filter_not_visited visited (neighbours initial))) 
     else False
     
+    
+-- ta funkcja może sprawdzić dany wierzchołek więcej niż raz, ale nigdy się nie zapętli 
+    
 filter_not_visited :: Eq a => [a] -> [a] -> [a]
 filter_not_visited visited neighbour_list = filterList (\x -> not(elemList x visited)) neighbour_list
+    
+
+
+-- reachable
+
+reachable :: Eq a => a -> a -> (a -> [a]) -> Bool
+reachable v initial neighbours = reachable_with_visited v initial [] neighbours
+
+reachable_with_visited :: Eq a => a -> a -> [a] -> (a -> [a]) -> Bool 
+reachable_with_visited v initial visited neighbours = 
+    if v == initial
+    then True
+    else 
+        orList 
+        (mapList (\x -> reachable_with_visited v x (initial:visited) neighbours) (filter_not_visited visited (neighbours initial))) 
+    
     
 -- sprawdzenie grafu
 check_vertex1 :: Integer -> Bool
@@ -22,13 +43,14 @@ check_vertex2 :: Integer -> Bool
 check_vertex2 x = True
 
 neighbours :: Integer -> [Integer]
-neighbours 1 = [2, 3]
-neighbours 2 = [3, 1]
-neighbours 3 = [1, 2]
+neighbours 1 = [2]
+neighbours 2 = [1, 3]
+neighbours 3 = [2]
 neighbours x = []
 
 res :: Bool
-res = isGraphClosed 1 neighbours check_vertex2
+res = reachable 1 3 neighbours
+    
 
 -- funkcje pomocnicze z listami 
 
@@ -41,10 +63,14 @@ foldList fun acc (h:t) = foldList fun (fun h acc) t
 allList :: (a-> Bool) -> [a] -> Bool
 allList isOk list = foldList fun True list 
     where fun element acc = ((isOk element) && acc)
+    
 
 
 andList :: [Bool] -> Bool
 andList list = foldList (&&) True list
+
+orList :: [Bool] -> Bool
+orList list = foldList (||) False list
 
 
 mapList :: (a -> b) -> [a] -> [b]
