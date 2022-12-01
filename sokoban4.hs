@@ -341,45 +341,51 @@ range_n n = [-n..n]
 draw_box :: Coord -> Picture
 draw_box c = translated (fromIntegral (x c)) (fromIntegral (y c)) (drawTile Box)
 
--- isGraphClosed
+-- funkcje grafowe
+
+-- foldGraph
+
+data SearchResultType a b = SearchResultType {
+    resVisited :: [a],
+    resAcc :: b,
+    resToVisit :: [a] -- stos rosnący w lewo 
+    }
+
+foldGraph :: Eq a => a -> (a -> [a]) -> (a -> b -> b) -> b -> b
+foldGraph initial neighbours fun acc = 
+    (resAcc (fold_graph_with_visited SearchResultType{resVisited = [initial], resAcc = acc, resToVisit = []} initial neighbours fun))
+    
+fold_graph_with_visited :: Eq a => (SearchResultType a b) -> a -> (a -> [a]) -> (a -> b -> b) -> (SearchResultType a b)
+
+fold_graph_with_visited res initial neighbours fun = 
+-- to będzie bfs
+-- wrzuca jego nieodwiedzonych sąsiadów do to visit
+-- i wrzuca wszystkich z kolejki do visited
+-- aktualizuje acc za pomocą fun na initial 
+-- wywołuje się na następnym z toVisit jeśli coś tam jest
+-- jeśli stos jest pusty to zakańcza się i zwraca wynik 
+    let unvisited_neighbours = (filterList (\x -> (not (elemList x (resVisited res)))) (neighbours initial)) in
+    let new_to_visit = unvisited_neighbours ++ (resToVisit res) in
+    let new_visited = unvisited_neighbours ++ (resVisited res) in
+    let new_acc = (fun initial (resAcc res)) in (      
+        if new_to_visit == []  
+        then
+            SearchResultType{resVisited = new_visited, resToVisit = new_to_visit, resAcc = new_acc}
+        else 
+            fold_graph_with_visited SearchResultType{resVisited = new_visited, resToVisit = (tail new_to_visit), resAcc = new_acc} (head new_to_visit) neighbours fun
+        )
+    
+-- funkcje grafowe z foldem
 
 isGraphClosed :: Eq a => a -> (a -> [a]) -> (a -> Bool) -> Bool
-isGraphClosed initial neighbours isOk = dfs initial [] neighbours isOk
-
-dfs :: Eq a => a -> [a] -> (a -> [a]) -> (a -> Bool) -> Bool -- to samo co isGraphClosed, tylko dostaje jako argument dodatkowo visited, czyli listę odwiedzonych wierzchołków 
-
-dfs initial visited neighbours isOk = 
-    if (isOk initial) 
-    then 
-        andList 
-            (mapList (\x -> dfs x (initial:visited) neighbours isOk) (filter_not_visited visited (neighbours initial))) 
-    else False
+isGraphClosed initial neighbours isOk = foldGraph initial neighbours both_ok True
+    where both_ok v acc = ((isOk v) && acc)
     
     
--- ta funkcja może sprawdzić dany wierzchołek więcej niż raz, ale nigdy się nie zapętli 
--- aczkolwiek jej złożoność dla kliki rozmiaru n to n!, więc nie jest zbyt dobrze 
--- jeśli zdążę to to poprawię, ael chyba nie
-    
-filter_not_visited :: Eq a => [a] -> [a] -> [a]
-filter_not_visited visited neighbour_list = filterList (\x -> not(elemList x visited)) neighbour_list
-    
-
-
--- reachable
-
 reachable :: Eq a => a -> a -> (a -> [a]) -> Bool
-reachable v initial neighbours = reachable_with_visited v initial [] neighbours
-
-reachable_with_visited :: Eq a => a -> a -> [a] -> (a -> [a]) -> Bool 
-reachable_with_visited v initial visited neighbours = 
-    if v == initial
-    then True
-    else 
-        orList 
-        (mapList (\x -> reachable_with_visited v x (initial:visited) neighbours) (filter_not_visited visited (neighbours initial))) 
-        
--- all reachable
-
+reachable v initial neighbours = foldGraph initial neighbours equals_or_reachable False
+    where equals_or_reachable x acc = ((v == x) || acc)
+    
 allReachable :: Eq a => [a] -> a -> (a -> [a]) -> Bool
 allReachable vs initial neighbours = allList (\x -> reachable x initial neighbours) vs
     

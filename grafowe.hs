@@ -85,6 +85,9 @@ isGraphClosed initial neighbours isOk = foldGraph initial neighbours both_ok Tru
 reachable :: Eq a => a -> a -> (a -> [a]) -> Bool
 reachable v initial neighbours = foldGraph initial neighbours equals_or_reachable False
     where equals_or_reachable x acc = ((v == x) || acc)
+    
+allReachable :: Eq a => [a] -> a -> (a -> [a]) -> Bool
+allReachable vs initial neighbours = allList (\x -> reachable x initial neighbours) vs
 
     
 -- sprawdzenie grafu
