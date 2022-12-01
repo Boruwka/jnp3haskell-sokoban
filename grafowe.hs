@@ -2,8 +2,8 @@ main = print res
 
 -- isGraphClosed
 
-isGraphClosed :: Eq a => a -> (a -> [a]) -> (a -> Bool) -> Bool
-isGraphClosed initial neighbours isOk = dfs initial [] neighbours isOk
+isGraphClosed_without_fold :: Eq a => a -> (a -> [a]) -> (a -> Bool) -> Bool
+isGraphClosed_without_fold initial neighbours isOk = dfs initial [] neighbours isOk
 
 dfs :: Eq a => a -> [a] -> (a -> [a]) -> (a -> Bool) -> Bool -- to samo co isGraphClosed, tylko dostaje jako argument dodatkowo visited, czyli listę odwiedzonych wierzchołków 
 
@@ -17,6 +17,7 @@ dfs initial visited neighbours isOk =
     
 -- ta funkcja może sprawdzić dany wierzchołek więcej niż raz, ale nigdy się nie zapętli 
 -- aczkolwiek jej złożoność dla kliki rozmiaru n to n!, więc nie jest zbyt dobrze 
+-- jeśli zdążę to to poprawię, ael chyba nie
     
 filter_not_visited :: Eq a => [a] -> [a] -> [a]
 filter_not_visited visited neighbour_list = filterList (\x -> not(elemList x visited)) neighbour_list
@@ -25,8 +26,8 @@ filter_not_visited visited neighbour_list = filterList (\x -> not(elemList x vis
 
 -- reachable
 
-reachable :: Eq a => a -> a -> (a -> [a]) -> Bool
-reachable v initial neighbours = reachable_with_visited v initial [] neighbours
+reachable_without_fold :: Eq a => a -> a -> (a -> [a]) -> Bool
+reachable_without_fold v initial neighbours = reachable_with_visited v initial [] neighbours
 
 reachable_with_visited :: Eq a => a -> a -> [a] -> (a -> [a]) -> Bool 
 reachable_with_visited v initial visited neighbours = 
@@ -38,9 +39,53 @@ reachable_with_visited v initial visited neighbours =
         
 -- all reachable
 
-allReachable :: Eq a => [a] -> a -> (a -> [a]) -> Bool
-allReachable vs initial neighbours = allList (\x -> reachable x initial neighbours) vs
+allReachable_without_fold :: Eq a => [a] -> a -> (a -> [a]) -> Bool
+allReachable_without_fold vs initial neighbours = allList (\x -> reachable x initial neighbours) vs
+   
+   
+-- foldGraph
+
+data SearchResultType a b = SearchResultType {
+    resVisited :: [a],
+    resAcc :: b,
+    resToVisit :: [a] -- stos rosnący w lewo 
+    }
+
+foldGraph :: Eq a => a -> (a -> [a]) -> (a -> b -> b) -> b -> b
+foldGraph initial neighbours fun acc = 
+    (resAcc (fold_graph_with_visited SearchResultType{resVisited = [initial], resAcc = acc, resToVisit = []} initial neighbours fun))
     
+fold_graph_with_visited :: Eq a => (SearchResultType a b) -> a -> (a -> [a]) -> (a -> b -> b) -> (SearchResultType a b)
+
+fold_graph_with_visited res initial neighbours fun = 
+-- to będzie bfs
+-- wrzuca jego nieodwiedzonych sąsiadów do to visit
+-- i wrzuca wszystkich z kolejki do visited
+-- aktualizuje acc za pomocą fun na initial 
+-- wywołuje się na następnym z toVisit jeśli coś tam jest
+-- jeśli stos jest pusty to zakańcza się i zwraca wynik 
+    let unvisited_neighbours = (filterList (\x -> (not (elemList x (resVisited res)))) (neighbours initial)) in
+    let new_to_visit = unvisited_neighbours ++ (resToVisit res) in
+    let new_visited = unvisited_neighbours ++ (resVisited res) in
+    let new_acc = (fun initial (resAcc res)) in (      
+        if new_to_visit == []  
+        then
+            SearchResultType{resVisited = new_visited, resToVisit = new_to_visit, resAcc = new_acc}
+        else 
+            fold_graph_with_visited SearchResultType{resVisited = new_visited, resToVisit = (tail new_to_visit), resAcc = new_acc} (head new_to_visit) neighbours fun
+        )
+    
+-- funkcje grafowe z foldem
+
+isGraphClosed :: Eq a => a -> (a -> [a]) -> (a -> Bool) -> Bool
+isGraphClosed initial neighbours isOk = foldGraph initial neighbours both_ok True
+    where both_ok v acc = ((isOk v) && acc)
+    
+    
+reachable :: Eq a => a -> a -> (a -> [a]) -> Bool
+reachable v initial neighbours = foldGraph initial neighbours equals_or_reachable False
+    where equals_or_reachable x acc = ((v == x) || acc)
+
     
 -- sprawdzenie grafu
 check_vertex1 :: Integer -> Bool
@@ -60,8 +105,13 @@ neighbours2 2 = [1, 3]
 neighbours2 3 = [1, 2]
 neighbours2 x = []
 
-res :: Bool
-res = allReachable [1, 2, 5] 1 neighbours2 
+res :: [Bool]
+res = [
+    reachable 3 1 neighbours1,
+    reachable 3 1 neighbours2, 
+    reachable 5 1 neighbours1,
+    reachable 5 1 neighbours2
+    ]
     
 
 -- funkcje pomocnicze z listami 
