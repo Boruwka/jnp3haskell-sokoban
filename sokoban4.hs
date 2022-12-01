@@ -60,7 +60,7 @@ startScreen :: Picture
 startScreen = etap4 
 
 etap4 :: Picture
-etap4 = pictureOfBools (mapList (\x -> isClosed x) (mazes ++ badMazes))
+etap4 = pictureOfBools (mapList (\x -> ((isClosed x) && (isSane x))) (mazes ++ badMazes))
 
 pictureOfBools :: [Bool] -> Picture
 pictureOfBools xs = translated (-fromIntegral k / 2) (fromIntegral k) (go 0 xs)
@@ -453,6 +453,19 @@ isClosed m =
     if ((((mazeMap m) (mazeStart m)) /= Ground) && (((mazeMap m) (mazeStart m)) /= Storage)) 
     then False
     else isGraphClosed (mazeStart m) (maze_neighbours (mazeMap m)) (\x -> not(((mazeMap m) x) == Blank))
+    
+isSane :: Maze -> Bool
+isSane m = ((countReachableTiles m Storage) >= (countReachableTiles m Box))
+
+countReachableTiles :: Maze -> Tile -> Integer
+countReachableTiles m tile = 
+    (foldGraph (mazeStart m) (maze_neighbours (mazeMap m)) (acc_sum (mazeMap m) tile) (0))
+
+
+acc_sum mazemap t c acc =
+    if ((mazemap c) == t)
+    then (acc + 1)
+    else acc
     
 maze_neighbours :: (Coord -> Tile) -> Coord -> [Coord]
 maze_neighbours map c =
