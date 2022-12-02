@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 import CodeWorld
+import Data.Text(pack)
 type Program = IO ()
 
 main :: Program
 main = walk
 
 -- Jagoda Bracha jb429153
--- nie zdążę całości na pewno, do jutra do 18:00 wyślę nową wersję, jeśli uda mi się coś dorobić
--- na razie brakuje całego etapu 5, funkcji isSane i zrobienia przeszukiwania grafu tak, by się liczyło w sensownym czasie 
--- (i to też jest konieczne i wystarczające do zrobienia funkcji isSane) 
+-- poprawiony algorytm foldGraph, ale nadal jest w nim jakiś bug, którego nie mogę znaleźć
+-- bez etapu 5 
 
 
 walk :: IO()
@@ -57,10 +57,12 @@ withStartScreen (Activity state0 handle draw)
     draw' (Running s) = draw s
     
 startScreen :: Picture
-startScreen = etap4 
+--startScreen = lettering( pack ((show (countReachableTiles (head mazes) Storage)))) 
+--startScreen = pictureOfMaze (head badMazes)
+startScreen = etap4
 
 etap4 :: Picture
-etap4 = pictureOfBools (mapList (\x -> ((isClosed x) && (isSane x))) (mazes ++ badMazes))
+etap4 = pictureOfBools (mapList (\x -> ((isClosed x) && (isSane x))) allMazes)
 
 pictureOfBools :: [Bool] -> Picture
 pictureOfBools xs = translated (-fromIntegral k / 2) (fromIntegral k) (go 0 xs)
@@ -82,7 +84,7 @@ pictureOfBools xs = translated (-fromIntegral k / 2) (fromIntegral k) (go 0 xs)
 -- pierwotny stan 
 
 initial_state :: State
-initial_state = S (C 0 1) 10 (initial_maze) (initial_maze) L initialBoxes
+initial_state = S (C 0 1) 10 (head mazes) (head mazes) L 1 0 initialBoxes
 
 initial_maze :: Coord -> Tile
 initial_maze (C x y)
@@ -93,7 +95,7 @@ initial_maze (C x y)
   | x >= -2 && y == 0        = Box  -- box
   | otherwise                = Ground  -- ground
 
-n :: Int 
+n :: Integer 
 n = 10
 
 initialBoxes :: [Coord]
@@ -104,7 +106,12 @@ initialBoxes = getBoxes initial_maze
 
 handleEvent :: Event -> State -> State
 handleEvent (KeyPress key) state
-    | (isWinning state) = state
+    | (isWinning state) = state {
+        stMaze = (nth allMazes (stLevel state)),
+        stInitialMaze = (nth allMazes (stLevel state)),
+        stMovesCount = 0,
+        stLevel = (stLevel state) + 1
+        }
     | key == "Right" = move_player R state
     | key == "Up"    = move_player U state
     | key == "Left"  = move_player L state
@@ -119,7 +126,8 @@ move_player dir state =
         state {
             stPlayer = 
             (moveCoord dir (stPlayer state)),
-            stDir = dir
+            stDir = dir,
+            stMovesCount = (stMovesCount state) + 1
         }
     else 
         if (check_if_box_is_moved state dir (moveCoord dir (stPlayer state))) -- to pudło i za nim jest miejsce
@@ -127,8 +135,12 @@ move_player dir state =
             state { 
                 stPlayer = (moveCoord dir (stPlayer state)),
                 stBoxes = new_boxes,                    
-                stMaze = addBoxes new_boxes (removeBoxes initial_maze),
-                stDir = dir
+                stMaze = Maze {
+                    mazeMap = (addBoxes new_boxes (removeBoxes (initial_maze))),
+                    mazeStart = mazeStart (stInitialMaze state)
+                    },
+                stDir = dir,
+                stMovesCount = (stMovesCount state) + 1
             }
         else 
             state
@@ -149,12 +161,20 @@ change_one_element a b c =
 draw :: State -> Picture
 draw state = 
     if (isWinning state) 
-    then lettering("Wygrana!")
+    then lettering(pack("Wygrana!" ++ show(stMovesCount state)))
     else 
         (translated (fromIntegral (x (stPlayer state))) (fromIntegral (y (stPlayer state))) (player (stDir state))) &
         (pictures[
-        draw_square state (C x y) | 
+        draw_square (mazeMap (stMaze state)) (C x y) | 
         x <- range_n (stRange state), y <- range_n (stRange state) ])
+        
+pictureOfMaze :: Maze -> Picture
+pictureOfMaze m = 
+    (translated (fromIntegral (x (mazeStart m))) (fromIntegral (y (mazeStart m))) (player R)) &
+    (pictures[
+    draw_square (mazeMap m) (C x y) | 
+    x <- range_n 10, y <- range_n 10 ]) 
+
     
 -- rysunki elementów planszy 
 
@@ -180,7 +200,7 @@ box =
 
 check_if_box_is_moved :: State -> Direction -> Coord -> Bool
 check_if_box_is_moved state dir c = 
-    (stMaze state c) == Box && ((stMaze state (moveCoord dir c)) == Ground || (stMaze state (moveCoord dir c)) == Storage)
+    ((mazeMap (stMaze state)) c) == Box && (((mazeMap (stMaze state)) (moveCoord dir c)) == Ground || ((mazeMap (stMaze state)) (moveCoord dir c)) == Storage)
 
 getBoxes :: (Coord -> Tile) -> [Coord]
 getBoxes maze = [(C x y) | x <- range_n n, y <- range_n n, maze (C x y) == Box]
@@ -272,6 +292,7 @@ cutOffStorageMaze_DM (C x y)
   | x == 0 && elem y [-4 .. 2]                        = Box
   | otherwise                                         = Ground
 
+allMazes = mazes ++ badMazes
     
 -- podstawowe definicje
 
@@ -279,11 +300,11 @@ isWinning :: State -> Bool
 isWinning state = andList (map (is_on_storage state) (stBoxes state))
         
 is_on_storage :: State -> Coord -> Bool
-is_on_storage state c = ((stInitialMaze state) c == Storage)
+is_on_storage state c = ((mazeMap (stInitialMaze state)) c == Storage)
     
 
 data Direction = R | U | L | D
-data Coord = C {x :: Int, y :: Int} deriving (Eq)
+data Coord = C {x :: Integer, y :: Integer} deriving (Eq)
 
 moveCoord :: Direction -> Coord -> Coord
 moveCoord R (C x y) = C (x+1) y
@@ -297,10 +318,10 @@ moveCoords (h:tab) initial_coord =
     moveCoords tab (moveCoord h initial_coord)
 
 check_coord :: State -> Coord -> Bool -- sprawdza czy można się przemieścić na to pole
-check_coord state c = (stMaze state c) == Ground || (stMaze state c) == Storage
+check_coord state c = ((mazeMap (stMaze state)) c) == Ground || ((mazeMap (stMaze state)) c) == Storage
 
-draw_square :: State -> Coord -> Picture 
-draw_square state c = translated (fromIntegral (x c)) (fromIntegral (y c)) (drawTile ((stMaze state) c))
+draw_square :: (Coord -> Tile) -> Coord -> Picture 
+draw_square maze_map c = translated (fromIntegral (x c)) (fromIntegral (y c)) (drawTile (maze_map c))
 
 player_base :: Picture
 player_base = colored yellow (
@@ -327,15 +348,17 @@ drawTile Blank = blank
 
 data State = S {
     stPlayer :: Coord,
-    stRange  :: Int,
-    stMaze   :: (Coord -> Tile),
-    stInitialMaze :: (Coord -> Tile),
+    stRange  :: Integer,
+    stMaze   :: Maze,
+    stInitialMaze :: Maze,
     stDir    :: Direction, -- kierunek w którym patrzył gracz podczas ostatniego ruchu
+    stLevel  :: Integer,
+    stMovesCount :: Integer,
     stBoxes  :: [Coord]
 }
 
 
-range_n :: Int -> [Int]
+range_n :: Integer -> [Integer]
 range_n n = [-n..n] 
     
 draw_box :: Coord -> Picture
