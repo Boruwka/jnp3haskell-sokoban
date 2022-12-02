@@ -8,7 +8,20 @@ main = walk
 
 -- Jagoda Bracha jb429153
 -- poprawiony algorytm foldGraph, ale nadal jest w nim jakiś bug, którego nie mogę znaleźć
--- bez etapu 5 
+-- poniżej wklejam drugi algorym, który napisałam, który powinien być optymalniejszy, ale za to jest w nim błąd kompilacji, którego nie mogę rozwiązać 
+-- z etapu 5 zrobiłam tylko wypisywanie liczby ruchów, przełączanie się na następny poziom po wygranej i zmienianie poziomu przez wciśnięcie "N". 
+
+--foldGraph :: Eq c => c -> (c -> [c]) -> (c -> d -> d) -> d -> d
+--foldGraph initial neighbours fun acc = 
+--    snd (foldGraph_helper initial neighbours fun acc [initial])
+    
+--foldGraph_helper :: Eq c => c -> (c -> [c]) -> (c -> d -> d) -> d -> [c] -> ([c], d)
+--foldGraph_helper initial neighbours fun acc visited = 
+--    foldList (fun neighbours) ([initial], acc) (filterList (\x -> (not (elemList x visited))) (neighbours initial))
+
+--fun :: (c -> [c]) -> c -> ([c], d) -> ([c], d)
+--fun neighbours v (visited, users_acc) = 
+--    foldGraph_helper v neighbours fun (fun v users_acc) (v:visited) 
 
 
 walk :: IO()
@@ -110,6 +123,12 @@ handleEvent (KeyPress key) state
         stMaze = (nth allMazes (stLevel state)),
         stInitialMaze = (nth allMazes (stLevel state)),
         stMovesCount = 0,
+        stLevel = mod ((stLevel state) + 1) (listLength allMazes)
+        }
+    | key == "N" = state {
+        stMaze = (nth allMazes (stLevel state)),
+        stInitialMaze = (nth allMazes (stLevel state)),
+        stMovesCount = 0,
         stLevel = (stLevel state) + 1
         }
     | key == "Right" = move_player R state
@@ -161,7 +180,7 @@ change_one_element a b c =
 draw :: State -> Picture
 draw state = 
     if (isWinning state) 
-    then lettering(pack("Wygrana!" ++ show(stMovesCount state)))
+    then lettering(pack("Wygrana! Liczba ruchow: " ++ show(stMovesCount state)))
     else 
         (translated (fromIntegral (x (stPlayer state))) (fromIntegral (y (stPlayer state))) (player (stDir state))) &
         (pictures[
