@@ -50,8 +50,10 @@ instance Functor Stream where
 -- 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,...
 
 instance Applicative Stream where
-  pure = undefined
-  (<*>) = undefined
+  pure a = rep a
+  (f :> fs) <*> (hd :> tl) = ((f hd) :> (fs <*> tl))
+  
+
 -- | Example:
 --
 -- >>> pure (+1) <*> nats
@@ -64,8 +66,9 @@ instance Applicative Stream where
 
 newtype Supply s a = S { runSupply :: Stream s -> (a, Stream s) }
 
+
 get :: Supply s s
-get = undefined
+get = S { runSupply = (\(hd :> tl) -> (hd, tl))}
 
 -- | Example:
 --
@@ -73,7 +76,7 @@ get = undefined
 -- 0
 
 pureSupply :: a -> Supply s a
-pureSupply a = undefined
+pureSupply a = S { runSupply = (\ x -> (a, x)) }
 
 -- | Example:
 --
@@ -82,7 +85,10 @@ pureSupply a = undefined
 
 mapSupply :: (a->b) -> Supply s a -> Supply s b
 mapSupply f (S g) = S h where
-  h s = undefined
+  h s = ((f (fst (g s))), (snd (g s)))
+  
+-- g = (runSupply typu s, a) = Stream s -> (a, Stream s)
+-- h = (runSupply typu s, b) = Stream s -> (b, Stream s) 
 
 -- | Example:
 --
@@ -91,11 +97,16 @@ mapSupply f (S g) = S h where
 
 mapSupply2 :: (a->b->c) -> Supply s a -> Supply s b -> Supply s c
 mapSupply2 f (S ga) (S gb) = S gc where
-  gc s = undefined
+  gc s = ((f (fst (ga s)) (fst (gb s))), (snd (ga s)))
 
 bindSupply :: Supply s a -> (a->Supply s b) -> Supply s b
 bindSupply (S fa) k = S fb where
-  fb s = undefined
+  --fb s = (runSupply (k (fst (fa s)))) s
+  fb s = (runSupply (k (fst (fa s)))) (snd (fa s))
+  
+-- fa :: s -> (a, s)
+-- k :: a -> (Supply s b) = a -> (S(s -> (b, s))
+-- fb :: s -> (b, s)
 
 instance Functor (Supply s) where
   fmap = mapSupply
@@ -162,10 +173,10 @@ labelTree t = evalSupply (go t) nats
 writeln = putStrLn
 
 main = do 
-    writeln (show (rep 1))
-    writeln (show (nats))
-    writeln (show (zipStreamsWith (+) nats nats))
-    writeln (show (fmap (+1) nats))
+    writeln (show (pure (+1) <*> nats))
+    writeln (show (evalSupply get nats))
+    writeln (show (evalSupply (mapSupply (+1) get) nats))
+    writeln (show (evalSupply (get >> get >> get) nats))
     
 
 --main = do
