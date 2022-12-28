@@ -1,6 +1,10 @@
 module Main where
 --import Test.QuickCheck
 
+-- Jagoda Bracha jb429153
+-- Z dużym opóźnieniem i nie do końca rozumiem, jak to działa, więc raczej nie robiłam na punkty
+
+
 infixr 5 :>
 data Stream a = a :> (Stream a)
 
@@ -140,7 +144,11 @@ labelTree :: Tree a -> Tree Integer
 labelTree t = evalSupply (go t) nats
   where
     go :: Tree a -> Supply s (Tree s)
-    go = undefined
+    go (Leaf _) = Leaf <$> get
+    go (Branch l r) = mapSupply2 Branch (go l) (go r)
+    
+    
+    
 -- | Example:
 --
 -- >>> labelTree $ Branch (Leaf 'a') (Branch (Leaf 'b') (Leaf 'c'))
